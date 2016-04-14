@@ -30,6 +30,8 @@ public class ApplicationConfig extends Application {
      */
     private void addRestResourceClasses(Set<Class<?>> resources) {
         resources.add(edu.asu.cse564.samples.crud.restws.GradebookResource.class);
+        resources.add(edu.asu.cse564.samples.crud.restws.GradedItemResource.class);
+        resources.add(edu.asu.cse564.samples.crud.restws.StudentResource.class);
     }
     
 }

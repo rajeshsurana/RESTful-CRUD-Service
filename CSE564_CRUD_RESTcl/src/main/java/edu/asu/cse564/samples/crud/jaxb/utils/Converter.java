@@ -86,8 +86,8 @@ public class Converter {
         ObjectMapper mapper = new ObjectMapper();
         String result;
         try{
-            //result = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(source);
-            result = mapper.writeValueAsString(source);
+            result = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(source);
+            //result = mapper.writeValueAsString(source);
             LOG.debug("Object to JSON = {}", result);
         }catch (Exception e) {
             throw new RuntimeException(e);

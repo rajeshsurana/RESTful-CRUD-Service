@@ -18,8 +18,13 @@ import org.slf4j.LoggerFactory;
 
 import edu.asu.cse564.samples.crud.jaxb.model.Gradebook;
 import edu.asu.cse564.samples.crud.jaxb.model.GradedItem;
+import edu.asu.cse564.samples.crud.jaxb.model.Student;
 import edu.asu.cse564.samples.crud.jaxb.utils.Converter;
 import edu.asu.cse564.samples.crud.restcl.GradeBook_CRUD_cl;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.util.Random;
+import javax.swing.JOptionPane;
 
 /**
  *
@@ -36,40 +41,69 @@ public class Gradebook_REST_UI extends JFrame {
     /**
      * Creates new form Gradebook_REST_UI
      */
-    public Gradebook_REST_UI() {
+    public Gradebook_REST_UI(String title) {
         LOG.info("Creating a Appointment_REST_UI object");
         initComponents();
         
         gradebook_CRUD_rest_client = new GradeBook_CRUD_cl();
-        jRadioButton_create2.setSelected(true);
-        this.enableDiableFlag = false;
+        jRadioButton_create_gradebook.setSelected(true);
+        this.enableDiableFlag = true;
         this.formatCheckingFlag = true;
+        super.setTitle(title);
+        super.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        this.textFieldOperator(true, false, false, false, false, false);
+        super.addWindowListener( new WindowAdapter()
+        {
+            @Override
+            public void windowClosing(WindowEvent e)
+            {
+                JFrame frame = (JFrame)e.getSource();
+
+                int result = JOptionPane.showConfirmDialog(
+                    frame,
+                    "Are you sure you want to exit the application?",
+                    "Exit Application",
+                    JOptionPane.YES_NO_OPTION);
+
+                if (result == JOptionPane.YES_OPTION){
+                    gradebook_CRUD_rest_client.close();
+                    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                }
+            }
+        });
     }
     
-    private String convertFormToJSONString(){
+    private String convertFormToJSONString(boolean stu){
         GradedItem gradedItem = new GradedItem();
+        String jsonString = null;
          
-        if (!jTextField_category.getText().trim().equals("")){
-            gradedItem.setCategory(jTextField_category.getText());
-        }
         
-        if (!jTextField_itemId.getText().trim().equals("")){
-            gradedItem.setId(Integer.parseInt(jTextField_itemId.getText()));
-        }
         
-        if (!jTextField_studentId.getText().trim().equals("")){
-            gradedItem.setStudentId(Integer.parseInt(jTextField_studentId.getText()));
-        }
-        
-        if (!jTextField_score.getText().trim().equals("")){
-            gradedItem.setMarks(Float.parseFloat(jTextField_score.getText()));
-        }
+        if(stu){
+            Student student = new Student();
+            if (!jTextField_studentId.getText().trim().equals("")){
+                student.setStudentId(Integer.parseInt(jTextField_studentId.getText()));
+            }
 
-        if (!jTextField_feedback.getText().trim().equals("")){
-            gradedItem.setFeedback(jTextField_feedback.getText());
+            if (!jTextField_score.getText().trim().equals("")){
+                student.setScore(Float.parseFloat(jTextField_score.getText()));
+            }
+
+            if (!jTextField_feedback.getText().trim().equals("")){
+                student.setFeedback(jTextField_feedback.getText());
+            }
+            jsonString = Converter.convertFromObjectToJSON(student, student.getClass());
+            //gradedItem.addStudent(student);
+        } else {
+            if (!jTextField_category.getText().trim().equals("")){
+            gradedItem.setCategory(jTextField_category.getText());
+            }
+
+            if (!jTextField_itemId.getText().trim().equals("")){
+                gradedItem.setId(Integer.parseInt(jTextField_itemId.getText()));
+            }
+            jsonString = Converter.convertFromObjectToJSON(gradedItem, gradedItem.getClass());
         }
-        String jsonString = Converter.convertFromObjectToJSON(gradedItem, gradedItem.getClass());
-        
         return jsonString;
     }
     
@@ -77,50 +111,57 @@ public class Gradebook_REST_UI extends JFrame {
         this.populateForm(clientResponse, true);
     }
     
-    private void populateForm(ClientResponse clientResponse, boolean populateGradedItem){
+    private void populateForm(ClientResponse clientResponse, boolean populateStudent ){
         LOG.info("Populating the UI with the Graded Item info");
-        
+        LOG.info("Response status code = {}", clientResponse.getStatus());
         String entity=null;
-        try{
-            entity = clientResponse.getEntity(String.class);
-            jTextPane_response.setText(entity);
-        } catch(Exception e){
-            e.printStackTrace();
+        if(!(clientResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode())){
+            
+            try{
+                entity = clientResponse.getEntity(String.class);
+                jTextPane_response.setText(entity);
+                // Populate HTTP Header Information
+                jTextField_media.setText(clientResponse.getType().toString());
+
+            } catch(Exception e){
+                e.printStackTrace();
+            }
+        }else{
+            jTextPane_response.setText("");
+            jTextField_media.setText("");
         }
-        
         try{
             if (((clientResponse.getStatus() == Response.Status.OK.getStatusCode()) ||
                 (clientResponse.getStatus() == Response.Status.CREATED.getStatusCode()))&&
-                 populateGradedItem){
+                 populateStudent){
                 
                 LOG.debug("The Client Response entity is {}", entity);
-                GradedItem gradedItem = (GradedItem)Converter.convertFromJsonToObject(entity, GradedItem.class);
-                LOG.debug("The Client Response gradedItem object is {}", gradedItem);
+                Student student = (Student)Converter.convertFromJsonToObject(entity, Student.class);
+                LOG.debug("The Client Response student object is {}", student);
                 
-                // Populate Graded Item info
-                jTextField_category.setText(gradedItem.getCategory());
-                jTextField_itemId.setText(String.valueOf(gradedItem.getId()));
-                jTextField_studentId.setText(Integer.toString(gradedItem.getStudentId()));
-                jTextField_score.setText(Float.toString(gradedItem.getMarks()));
-                jTextField_feedback.setText(gradedItem.getFeedback());
+                // Populate Student info
+                jTextField_studentId.setText(Integer.toString(student.getStudentId()));
+                jTextField_score.setText(Float.toString(student.getScore()));
+                jTextField_feedback.setText(student.getFeedback());
             } else {
-                jTextField_category.setText("");
-                jTextField_itemId.setText("");
-                jTextField_studentId.setText("");
+                //jTextField_category.setText("");
+                //jTextField_itemId.setText("");
+                //jTextField_studentId.setText("");
                 jTextField_score.setText("");
                 jTextField_feedback.setText("");
             }
            
-            // Populate HTTP Header Information
-            jTextField3.setText(Integer.toString(clientResponse.getStatus()));
-            jTextField6.setText(clientResponse.getType().toString());
-            jTextField_date.setText(clientResponse.getResponseStatus().getReasonPhrase());
+            
             // The Location filed is only populated when a Resource is created
-            if (clientResponse.getStatus() == Response.Status.CREATED.getStatusCode()){
-                jTextField5.setText(clientResponse.getLocation().toString());
+            if ((clientResponse.getStatus() == Response.Status.CREATED.getStatusCode()) ||
+                    (clientResponse.getStatus() == Response.Status.NO_CONTENT.getStatusCode())){
+                jTextField_location.setText(clientResponse.getLocation().toString());
             } else {
-                jTextField5.setText("");
+                jTextField_location.setText("");
             }
+            jTextField_code.setText(Integer.toString(clientResponse.getStatus()));
+            
+            jTextField_phrase.setText(clientResponse.getResponseStatus().getReasonPhrase());
             
         } catch (Exception e){
             e.printStackTrace();
@@ -145,10 +186,17 @@ public class Gradebook_REST_UI extends JFrame {
         return true;
     }
     
-    private boolean checkFormat(boolean item, boolean student, boolean score){
+    private boolean checkFormat(boolean item, boolean student, boolean scoref){
         if (!this.formatCheckingFlag){
             return true;
         }
+        
+        if(gradebook == null || gradebook.trim().equals("")){
+            jTextField_help.setForeground(new java.awt.Color(255, 0, 0));
+            jTextField_help.setText("Gradebook Name can not be only whitespaces");
+            return false;
+        }
+        
         if(item){
             if(!this.isInteger(itemID)){
                 jTextField_help.setForeground(new java.awt.Color(255, 0, 0));
@@ -163,21 +211,21 @@ public class Gradebook_REST_UI extends JFrame {
                 return false;
             }
         }
-        if(score){
-            if(!this.isFloat(marks)){
+        if(scoref){
+            if(!this.isFloat(score)){
                 jTextField_help.setForeground(new java.awt.Color(255, 0, 0));
                 jTextField_help.setText("Score must in Integer/Float format");
                 return false;
             }
         }
-        jTextField_help.setForeground(new java.awt.Color(0, 255, 0));
+        Random randomcolor = new Random();
+        jTextField_help.setForeground(new java.awt.Color(randomcolor.nextInt(100), 255 - randomcolor.nextInt(40), randomcolor.nextInt(100)));
         jTextField_help.setText("Request sent");
         return true;
     }
     
     
-    private void textFieldOperator(boolean gradebook1, 
-                                   boolean gradebook2, 
+    private void textFieldOperator(boolean gradebook, 
                                    boolean category,
                                    boolean itemId,
                                    boolean studentId,
@@ -185,46 +233,41 @@ public class Gradebook_REST_UI extends JFrame {
                                    boolean feedback){
         if(!enableDiableFlag)
             return;
-        if(gradebook1){
-            jTextField_gradebook1.setEnabled(true);
+
+        if(gradebook){
+            jTextField_gradebook.setEnabled(true);
         }else{
-            jTextField_gradebook1.setText("");
-            jTextField_gradebook1.setEnabled(false);
-        }
-        if(gradebook2){
-            jTextField_gradebook2.setEnabled(true);
-        }else{
-            jTextField_gradebook2.setText("");
-            jTextField_gradebook2.setEnabled(false);
+            //jTextField_gradebook.setText("");
+            jTextField_gradebook.setEnabled(false);
         }
         if(category){
             jTextField_category.setEnabled(true);
         }else{
-            jTextField_category.setText("");
+            //jTextField_category.setText("");
             jTextField_category.setEnabled(false);
         }
         if(itemId){
             jTextField_itemId.setEnabled(true);
         }else{
-            jTextField_itemId.setText("");
+            //jTextField_itemId.setText("");
             jTextField_itemId.setEnabled(false);
         }
         if(studentId){
             jTextField_studentId.setEnabled(true);
         }else{
-            jTextField_studentId.setText("");
+            //jTextField_studentId.setText("");
             jTextField_studentId.setEnabled(false);
         }
         if(score){
             jTextField_score.setEnabled(true);
         }else{
-            jTextField_score.setText("");
+            //jTextField_score.setText("");
             jTextField_score.setEnabled(false);
         }
         if(feedback){
             jTextField_feedback.setEnabled(true);
         }else{
-            jTextField_feedback.setText("");
+            //jTextField_feedback.setText("");
             jTextField_feedback.setEnabled(false);
         }         
     }
@@ -240,10 +283,10 @@ public class Gradebook_REST_UI extends JFrame {
 
         buttonGroup1 = new javax.swing.ButtonGroup();
         jLabel1 = new javax.swing.JLabel();
-        jRadioButton_create = new javax.swing.JRadioButton();
-        jRadioButton_read = new javax.swing.JRadioButton();
-        jRadioButton_update = new javax.swing.JRadioButton();
-        jRadioButton_delete = new javax.swing.JRadioButton();
+        jRadioButton_create_student = new javax.swing.JRadioButton();
+        jRadioButton_read_student = new javax.swing.JRadioButton();
+        jRadioButton_update_student = new javax.swing.JRadioButton();
+        jRadioButton_delete_student = new javax.swing.JRadioButton();
         jLabel2 = new javax.swing.JLabel();
         jLabel3 = new javax.swing.JLabel();
         jLabel4 = new javax.swing.JLabel();
@@ -252,76 +295,80 @@ public class Gradebook_REST_UI extends JFrame {
         jTextField_itemId = new javax.swing.JTextField();
         jButton1 = new javax.swing.JButton();
         jLabel5 = new javax.swing.JLabel();
-        jTextField3 = new javax.swing.JTextField();
+        jTextField_code = new javax.swing.JTextField();
         jLabel7 = new javax.swing.JLabel();
         jLabel8 = new javax.swing.JLabel();
-        jTextField5 = new javax.swing.JTextField();
+        jTextField_location = new javax.swing.JTextField();
         jLabel9 = new javax.swing.JLabel();
-        jTextField6 = new javax.swing.JTextField();
+        jTextField_media = new javax.swing.JTextField();
         jLabel10 = new javax.swing.JLabel();
-        jTextField_gradebook1 = new javax.swing.JTextField();
         jLabel11 = new javax.swing.JLabel();
         jTextField_score = new javax.swing.JTextField();
-        jLabel12 = new javax.swing.JLabel();
-        jRadioButton_create2 = new javax.swing.JRadioButton();
-        jLabel13 = new javax.swing.JLabel();
-        jTextField_gradebook2 = new javax.swing.JTextField();
+        jRadioButton_create_gradebook = new javax.swing.JRadioButton();
+        jTextField_gradebook = new javax.swing.JTextField();
         jLabel14 = new javax.swing.JLabel();
         jLabel16 = new javax.swing.JLabel();
         jLabel15 = new javax.swing.JLabel();
         jTextField_feedback = new javax.swing.JTextField();
         jLabel17 = new javax.swing.JLabel();
         jLabel6 = new javax.swing.JLabel();
-        jTextField_date = new javax.swing.JTextField();
-        jRadioButton_delete2 = new javax.swing.JRadioButton();
+        jTextField_phrase = new javax.swing.JTextField();
+        jRadioButton_delete_gradebook = new javax.swing.JRadioButton();
         jLabel18 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTextPane_response = new javax.swing.JTextPane();
-        jRadioButton_read2 = new javax.swing.JRadioButton();
+        jRadioButton_read_gradebook = new javax.swing.JRadioButton();
         jLabel_help = new javax.swing.JLabel();
         jTextField_help = new javax.swing.JTextField();
         jToggleButton_req = new javax.swing.JToggleButton();
         jToggleButton_format = new javax.swing.JToggleButton();
+        jRadioButton_create_item = new javax.swing.JRadioButton();
+        jRadioButton_read_item = new javax.swing.JRadioButton();
+        jRadioButton_delete_item = new javax.swing.JRadioButton();
+        jLabel20 = new javax.swing.JLabel();
+        jSeparator1 = new javax.swing.JSeparator();
+        jSeparator2 = new javax.swing.JSeparator();
+        jLabel12 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
-        jLabel1.setFont(new java.awt.Font("Lucida Grande", 1, 13)); // NOI18N
-        jLabel1.setText("Action");
+        jLabel1.setFont(new java.awt.Font("Lucida Grande", 1, 18)); // NOI18N
+        jLabel1.setText("Input Fields");
 
-        buttonGroup1.add(jRadioButton_create);
-        jRadioButton_create.setText("Create");
-        jRadioButton_create.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_create_student);
+        jRadioButton_create_student.setText("Create");
+        jRadioButton_create_student.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_createActionPerformed(evt);
+                jRadioButton_create_studentActionPerformed(evt);
             }
         });
 
-        buttonGroup1.add(jRadioButton_read);
-        jRadioButton_read.setText("Read");
-        jRadioButton_read.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_read_student);
+        jRadioButton_read_student.setText("Read");
+        jRadioButton_read_student.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_readActionPerformed(evt);
+                jRadioButton_read_studentActionPerformed(evt);
             }
         });
 
-        buttonGroup1.add(jRadioButton_update);
-        jRadioButton_update.setText("Update");
-        jRadioButton_update.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_update_student);
+        jRadioButton_update_student.setText("Update");
+        jRadioButton_update_student.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_updateActionPerformed(evt);
+                jRadioButton_update_studentActionPerformed(evt);
             }
         });
 
-        buttonGroup1.add(jRadioButton_delete);
-        jRadioButton_delete.setText("Delete");
-        jRadioButton_delete.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_delete_student);
+        jRadioButton_delete_student.setText("Delete");
+        jRadioButton_delete_student.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_deleteActionPerformed(evt);
+                jRadioButton_delete_studentActionPerformed(evt);
             }
         });
 
         jLabel2.setFont(new java.awt.Font("Lucida Grande", 1, 13)); // NOI18N
-        jLabel2.setText("Graded Item");
+        jLabel2.setText("Student");
 
         jLabel3.setText("Student id");
 
@@ -358,9 +405,9 @@ public class Gradebook_REST_UI extends JFrame {
 
         jLabel5.setText("HTTP Status Code");
 
-        jTextField3.addActionListener(new java.awt.event.ActionListener() {
+        jTextField_code.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField3ActionPerformed(evt);
+                jTextField_codeActionPerformed(evt);
             }
         });
 
@@ -369,17 +416,17 @@ public class Gradebook_REST_UI extends JFrame {
         jLabel8.setFont(new java.awt.Font("Lucida Grande", 1, 13)); // NOI18N
         jLabel8.setText("HTTP Header Info");
 
-        jTextField5.addActionListener(new java.awt.event.ActionListener() {
+        jTextField_location.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField5ActionPerformed(evt);
+                jTextField_locationActionPerformed(evt);
             }
         });
 
         jLabel9.setText("Media Type");
 
-        jTextField6.addActionListener(new java.awt.event.ActionListener() {
+        jTextField_media.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jTextField6ActionPerformed(evt);
+                jTextField_mediaActionPerformed(evt);
             }
         });
 
@@ -387,18 +434,13 @@ public class Gradebook_REST_UI extends JFrame {
 
         jLabel11.setText("Score");
 
-        jLabel12.setFont(new java.awt.Font("Lucida Grande", 1, 13)); // NOI18N
-        jLabel12.setText("Action");
-
-        buttonGroup1.add(jRadioButton_create2);
-        jRadioButton_create2.setText("Create");
-        jRadioButton_create2.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_create_gradebook);
+        jRadioButton_create_gradebook.setText("Create");
+        jRadioButton_create_gradebook.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_create2ActionPerformed(evt);
+                jRadioButton_create_gradebookActionPerformed(evt);
             }
         });
-
-        jLabel13.setText("Gradebook");
 
         jLabel14.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
         jLabel14.setForeground(new java.awt.Color(0, 51, 153));
@@ -413,11 +455,11 @@ public class Gradebook_REST_UI extends JFrame {
 
         jLabel6.setText("Status");
 
-        buttonGroup1.add(jRadioButton_delete2);
-        jRadioButton_delete2.setText("Delete");
-        jRadioButton_delete2.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_delete_gradebook);
+        jRadioButton_delete_gradebook.setText("Delete");
+        jRadioButton_delete_gradebook.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_delete2ActionPerformed(evt);
+                jRadioButton_delete_gradebookActionPerformed(evt);
             }
         });
 
@@ -425,11 +467,11 @@ public class Gradebook_REST_UI extends JFrame {
 
         jScrollPane1.setViewportView(jTextPane_response);
 
-        buttonGroup1.add(jRadioButton_read2);
-        jRadioButton_read2.setText("Read");
-        jRadioButton_read2.addActionListener(new java.awt.event.ActionListener() {
+        buttonGroup1.add(jRadioButton_read_gradebook);
+        jRadioButton_read_gradebook.setText("Read");
+        jRadioButton_read_gradebook.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                jRadioButton_read2ActionPerformed(evt);
+                jRadioButton_read_gradebookActionPerformed(evt);
             }
         });
 
@@ -440,123 +482,148 @@ public class Gradebook_REST_UI extends JFrame {
         jTextField_help.setFont(new java.awt.Font("Tahoma", 1, 16)); // NOI18N
         jTextField_help.setForeground(new java.awt.Color(255, 51, 51));
 
-        jToggleButton_req.setText("Disable non-required fields for each Action");
+        jToggleButton_req.setText("Enable all fields for all Actions");
         jToggleButton_req.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jToggleButton_reqActionPerformed(evt);
             }
         });
 
-        jToggleButton_format.setText("Disable format checking for each Action");
+        jToggleButton_format.setText("Disable format checking for input fields");
         jToggleButton_format.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jToggleButton_formatActionPerformed(evt);
             }
         });
 
+        buttonGroup1.add(jRadioButton_create_item);
+        jRadioButton_create_item.setText("Create");
+        jRadioButton_create_item.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton_create_itemActionPerformed(evt);
+            }
+        });
+
+        buttonGroup1.add(jRadioButton_read_item);
+        jRadioButton_read_item.setText("Read");
+        jRadioButton_read_item.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton_read_itemActionPerformed(evt);
+            }
+        });
+
+        buttonGroup1.add(jRadioButton_delete_item);
+        jRadioButton_delete_item.setText("Delete");
+        jRadioButton_delete_item.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jRadioButton_delete_itemActionPerformed(evt);
+            }
+        });
+
+        jLabel20.setFont(new java.awt.Font("Lucida Grande", 1, 13)); // NOI18N
+        jLabel20.setText("Graded Item");
+
+        jLabel12.setFont(new java.awt.Font("Lucida Grande", 1, 18)); // NOI18N
+        jLabel12.setText("Action");
+
         org.jdesktop.layout.GroupLayout layout = new org.jdesktop.layout.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(layout.createSequentialGroup()
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, layout.createSequentialGroup()
-                        .add(31, 31, 31)
+                .add(54, 54, 54)
+                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(layout.createSequentialGroup()
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                            .add(jLabel6)
+                            .add(jLabel18)
+                            .add(jLabel7))
+                        .add(18, 18, 18)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                                .add(jLabel11)
-                                .add(jLabel15)
-                                .add(jButton1)
-                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                    .add(jRadioButton_read2)
-                                    .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
-                                        .add(layout.createSequentialGroup()
-                                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                                .add(jRadioButton_update)
-                                                .add(jRadioButton_read)
-                                                .add(jRadioButton_delete))
-                                            .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                                .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel4)
-                                                .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel17)
-                                                .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel3)))
-                                        .add(layout.createSequentialGroup()
-                                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                                .add(layout.createSequentialGroup()
-                                                    .add(jRadioButton_create)
-                                                    .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                                                .add(org.jdesktop.layout.GroupLayout.TRAILING, layout.createSequentialGroup()
-                                                    .add(jRadioButton_create2)
-                                                    .add(136, 136, 136)))
-                                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                                .add(jLabel13)
-                                                .add(jLabel10)))
-                                        .add(org.jdesktop.layout.GroupLayout.LEADING, jRadioButton_delete2))))
+                            .add(jTextField_location)
+                            .add(jScrollPane1)
                             .add(layout.createSequentialGroup()
+                                .add(jTextField_phrase, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 144, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                 .add(18, 18, 18)
-                                .add(jLabel1)
-                                .add(179, 179, 179)
-                                .add(jLabel2)))
-                        .add(0, 0, 0)
-                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(jTextField_category)
-                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jTextField_gradebook2)
-                            .add(jTextField_feedback)
-                            .add(layout.createSequentialGroup()
-                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                    .add(jTextField_itemId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 201, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                    .add(jTextField_studentId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 201, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                    .add(jTextField_score, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 203, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                                .add(0, 0, Short.MAX_VALUE))
-                            .add(jTextField_gradebook1)))
-                    .add(org.jdesktop.layout.GroupLayout.LEADING, layout.createSequentialGroup()
-                        .add(54, 54, 54)
-                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                            .add(layout.createSequentialGroup()
-                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
-                                    .add(jLabel6)
-                                    .add(jLabel18)
-                                    .add(jLabel7))
+                                .add(jLabel5)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                                .add(jTextField_code, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 86, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                 .add(18, 18, 18)
-                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                                    .add(jTextField5)
-                                    .add(jScrollPane1)
-                                    .add(layout.createSequentialGroup()
-                                        .add(jTextField_date, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 144, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(18, 18, 18)
-                                        .add(jLabel5)
-                                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                                        .add(jTextField3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 86, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(18, 18, 18)
-                                        .add(jLabel9)
-                                        .add(18, 18, 18)
-                                        .add(jTextField6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 128, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                                        .add(0, 0, Short.MAX_VALUE))))
-                            .add(layout.createSequentialGroup()
-                                .add(jLabel_help)
+                                .add(jLabel9)
                                 .add(18, 18, 18)
-                                .add(jTextField_help)))))
+                                .add(jTextField_media, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 128, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                .add(0, 105, Short.MAX_VALUE))))
+                    .add(layout.createSequentialGroup()
+                        .add(jLabel_help)
+                        .add(18, 18, 18)
+                        .add(jTextField_help)))
                 .add(40, 40, 40))
             .add(layout.createSequentialGroup()
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(layout.createSequentialGroup()
-                        .add(274, 274, 274)
-                        .add(jLabel8))
+                        .add(117, 117, 117)
+                        .add(jToggleButton_req)
+                        .add(88, 88, 88)
+                        .add(jToggleButton_format))
                     .add(layout.createSequentialGroup()
-                        .add(49, 49, 49)
+                        .add(40, 40, 40)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                            .add(jLabel16)
+                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                .add(jRadioButton_create_gradebook)
+                                .add(jRadioButton_read_gradebook)
+                                .add(jRadioButton_delete_gradebook)))
+                        .add(18, 18, 18)
+                        .add(jSeparator2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                         .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(layout.createSequentialGroup()
-                                .add(jLabel12)
-                                .add(190, 190, 190)
-                                .add(jLabel16))
-                            .add(layout.createSequentialGroup()
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(jRadioButton_read_item)
+                                    .add(jRadioButton_create_item)
+                                    .add(jRadioButton_delete_item))
                                 .add(20, 20, 20)
-                                .add(jToggleButton_req)
-                                .add(18, 18, 18)
-                                .add(jToggleButton_format))))
+                                .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                            .add(jLabel20)
+                            .add(jButton1))
+                        .add(18, 18, 18)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(jRadioButton_create_student)
+                            .add(jRadioButton_update_student)
+                            .add(jRadioButton_read_student, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 88, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(jRadioButton_delete_student)
+                            .add(layout.createSequentialGroup()
+                                .add(9, 9, 9)
+                                .add(jLabel2)))
+                        .add(58, 58, 58)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel17)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel3)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel4)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel11)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel15)
+                            .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel10))
+                        .add(30, 30, 30)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_feedback, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 272, Short.MAX_VALUE)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_gradebook)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_category))
+                            .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_score, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 113, Short.MAX_VALUE)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_studentId)
+                                .add(org.jdesktop.layout.GroupLayout.LEADING, jTextField_itemId))))
                     .add(layout.createSequentialGroup()
-                        .add(253, 253, 253)
-                        .add(jLabel14)))
+                        .add(385, 385, 385)
+                        .add(jLabel8))
+                    .add(layout.createSequentialGroup()
+                        .add(308, 308, 308)
+                        .add(jLabel14))
+                    .add(layout.createSequentialGroup()
+                        .add(159, 159, 159)
+                        .add(jLabel12)
+                        .add(365, 365, 365)
+                        .add(jLabel1)))
                 .addContainerGap(org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         layout.setVerticalGroup(
@@ -564,112 +631,129 @@ public class Gradebook_REST_UI extends JFrame {
             .add(layout.createSequentialGroup()
                 .addContainerGap()
                 .add(jLabel14, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 45, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .add(30, 30, 30)
+                .add(25, 25, 25)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jToggleButton_req)
                     .add(jToggleButton_format))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jLabel12)
-                    .add(jLabel16))
-                .add(18, 18, 18)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jRadioButton_create2)
-                    .add(jLabel13)
-                    .add(jTextField_gradebook1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .add(1, 1, 1)
-                .add(jRadioButton_read2)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jRadioButton_delete2)
-                .add(29, 29, 29)
+                .add(33, 33, 33)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel1)
-                    .add(jLabel2))
+                    .add(jLabel12))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jRadioButton_create)
-                    .add(jLabel10)
-                    .add(jTextField_gradebook2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jRadioButton_read)
-                    .add(jLabel4)
-                    .add(jTextField_category, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jRadioButton_update)
-                    .add(jTextField_itemId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jLabel17))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jRadioButton_delete)
-                    .add(jLabel3)
-                    .add(jTextField_studentId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
-                    .add(jLabel11)
-                    .add(jTextField_score, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-                    .add(jTextField_feedback, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jLabel15))
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                    .add(layout.createSequentialGroup()
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jLabel2)
+                            .add(jLabel20)
+                            .add(jLabel16))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                            .add(jSeparator1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 154, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(layout.createSequentialGroup()
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(jRadioButton_create_student)
+                                    .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                                        .add(jRadioButton_create_item)
+                                        .add(jRadioButton_create_gradebook)))
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                                    .add(jRadioButton_read_student)
+                                    .add(jRadioButton_read_item)
+                                    .add(jRadioButton_read_gradebook))
+                                .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                                    .add(layout.createSequentialGroup()
+                                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                        .add(jRadioButton_update_student)
+                                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                        .add(jRadioButton_delete_student))
+                                    .add(layout.createSequentialGroup()
+                                        .add(33, 33, 33)
+                                        .add(jRadioButton_delete_item))
+                                    .add(layout.createSequentialGroup()
+                                        .add(34, 34, 34)
+                                        .add(jRadioButton_delete_gradebook))))
+                            .add(jSeparator2, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 154, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
+                    .add(layout.createSequentialGroup()
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jLabel10)
+                            .add(jTextField_gradebook, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jLabel4)
+                            .add(jTextField_category, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jTextField_itemId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(jLabel17))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jLabel3)
+                            .add(jTextField_studentId, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jLabel11)
+                            .add(jTextField_score, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jTextField_feedback, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                            .add(jLabel15))))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jButton1)
                 .add(20, 20, 20)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel_help)
                     .add(jTextField_help, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .add(30, 30, 30)
+                .add(28, 28, 28)
                 .add(jLabel8)
-                .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
+                .add(18, 18, 18)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel5)
-                    .add(jTextField3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jTextField_code, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(jLabel9)
-                    .add(jTextField6, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jTextField_date, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 26, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jTextField_media, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jTextField_phrase, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 26, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                     .add(jLabel6))
                 .add(18, 18, 18)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel7)
-                    .add(jTextField5, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(jTextField_location, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.UNRELATED)
                 .add(layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(layout.createSequentialGroup()
                         .add(jLabel18)
                         .add(24, 24, 24))
                     .add(layout.createSequentialGroup()
-                        .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 103, Short.MAX_VALUE)
+                        .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 123, Short.MAX_VALUE)
                         .add(30, 30, 30))))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void jRadioButton_createActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_createActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_create.getText());
-        this.textFieldOperator(false, true, true, false, true, true, true);
-    }//GEN-LAST:event_jRadioButton_createActionPerformed
+    private void jRadioButton_create_studentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_create_studentActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_create_student.getText());
+        this.textFieldOperator(true, true, true, true, true, true);
+    }//GEN-LAST:event_jRadioButton_create_studentActionPerformed
 
-    private void jRadioButton_readActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_readActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_read.getText());
-        this.textFieldOperator(false, true, true, true, true, false, false);
-    }//GEN-LAST:event_jRadioButton_readActionPerformed
+    private void jRadioButton_read_studentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_read_studentActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_read_student.getText());
+        this.textFieldOperator(true, true, true, true, true, true);
+    }//GEN-LAST:event_jRadioButton_read_studentActionPerformed
       
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         LOG.info("Invoking REST Client based on selection");
         
-        String gradebook = jTextField_gradebook2.getText();
-        itemID = jTextField_itemId.getText();
-        studentID = jTextField_studentId.getText();
-        String category = jTextField_category.getText();
-        marks = jTextField_score.getText();
+        gradebook = jTextField_gradebook.getText().trim();
+        itemID = jTextField_itemId.getText().trim();
+        studentID = jTextField_studentId.getText().trim();
+        String category = jTextField_category.getText().trim();
+        score = jTextField_score.getText().trim();
         
-        if (jRadioButton_create.isSelected()){
-            if (this.checkFormat(false, true, true)) {
-                LOG.debug("Invoking {} action", jRadioButton_create.getText());//Create
+        if (jRadioButton_create_student.isSelected()){
+            if (this.checkFormat(true, true, true)) {
+                LOG.debug("Invoking {} action", jRadioButton_create_student.getText());//Create
             
-                ClientResponse clientResponse = gradebook_CRUD_rest_client.createGradedItem(this.convertFormToJSONString(), gradebook, category);
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.createStudent(this.convertFormToJSONString(true), gradebook, category, itemID);
 
                 resourceURI = clientResponse.getLocation();
                 LOG.debug("Retrieved location {}", resourceURI);
@@ -677,50 +761,83 @@ public class Gradebook_REST_UI extends JFrame {
                 this.populateForm(clientResponse);
             }        
 
-        } else if (jRadioButton_read.isSelected()) {
+        } else if (jRadioButton_read_student.isSelected()) {
             if (this.checkFormat(true, true, false)) { 
-                LOG.debug("Invoking {} action", jRadioButton_read.getText());// Read
+                LOG.debug("Invoking {} action", jRadioButton_read_student.getText());// Read
 
-                ClientResponse clientResponse = gradebook_CRUD_rest_client.retrieveGradedItem(ClientResponse.class, gradebook, category, itemID, studentID);
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.retrieveStudent(ClientResponse.class, gradebook, category, itemID, studentID);
 
                 this.populateForm(clientResponse);  
             }
-        } else if (jRadioButton_update.isSelected()) {
+        } else if (jRadioButton_update_student.isSelected()) {
             if (this.checkFormat(true, true, true)) {
-                LOG.debug("Invoking {} action", jRadioButton_update.getText());//Update
+                LOG.debug("Invoking {} action", jRadioButton_update_student.getText());//Update
 
-                ClientResponse clientResponse = gradebook_CRUD_rest_client.updateGradedItem(this.convertFormToJSONString(), gradebook, category, itemID, studentID);
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.updateStudent(this.convertFormToJSONString(true), gradebook, category, itemID, studentID);
 
                 this.populateForm(clientResponse);
             }
-        } else if (jRadioButton_delete.isSelected()) {
+        } else if (jRadioButton_delete_student.isSelected()) {
             if (this.checkFormat(true, true, false)) {
-                LOG.debug("Invoking {} action", jRadioButton_delete.getText());//Delete
+                LOG.debug("Invoking {} action", jRadioButton_delete_student.getText());//Delete
 
-                ClientResponse clientResponse = gradebook_CRUD_rest_client.deleteGradedItem(gradebook, category, itemID, studentID);
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.deleteStudent(gradebook, category, itemID, studentID);
+                this.populateForm(clientResponse);
+            }
+        } else if (jRadioButton_create_gradebook.isSelected()){
+            if (this.checkFormat(false, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_create_gradebook.getText());//Create
+            
+                Gradebook gradebookObj = new Gradebook(jTextField_gradebook.getText());
+
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.createGradebook(Converter.convertFromObjectToJSON(gradebookObj, Gradebook.class));
+
+                resourceURI = clientResponse.getLocation();
+                LOG.debug("Retrieved location {}", resourceURI);
+
+                this.populateForm(clientResponse, false);
+            }  
+        } else if (jRadioButton_read_gradebook.isSelected()) {
+            if (this.checkFormat(false, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_read_gradebook.getText());//Read
+            
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.retrieveGradedbook(ClientResponse.class, gradebook);
                 this.populateForm(clientResponse, false);
             }
-        } else if (jRadioButton_create2.isSelected()){
-            LOG.debug("Invoking {} action", jRadioButton_create2.getText());//Create
+        } else if (jRadioButton_delete_gradebook.isSelected()) {
+            if (this.checkFormat(false, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_delete_gradebook.getText());//Delete
             
-            Gradebook gradebookObj = new Gradebook(jTextField_gradebook1.getText());
-            
-            ClientResponse clientResponse = gradebook_CRUD_rest_client.createGradebook(Converter.convertFromObjectToJSON(gradebookObj, Gradebook.class));
-            
-            resourceURI = clientResponse.getLocation();
-            LOG.debug("Retrieved location {}", resourceURI);
-            
-            this.populateForm(clientResponse, false);
-        } else if (jRadioButton_read2.isSelected()) {
-            LOG.debug("Invoking {} action", jRadioButton_read2.getText());//Read
-            
-            ClientResponse clientResponse = gradebook_CRUD_rest_client.retrieveGradedbook(ClientResponse.class, jTextField_gradebook1.getText());
-            this.populateForm(clientResponse, false);
-        } else if (jRadioButton_delete2.isSelected()) {
-            LOG.debug("Invoking {} action", jRadioButton_delete2.getText());//Delete
-            
-            ClientResponse clientResponse = gradebook_CRUD_rest_client.deleteGradedbook(jTextField_gradebook1.getText());
-            this.populateForm(clientResponse, false);
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.deleteGradedbook(jTextField_gradebook.getText());
+                this.populateForm(clientResponse, false);
+            }    
+        } else if (jRadioButton_create_item.isSelected()){
+            if (this.checkFormat(true, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_create_item.getText());//Create
+                GradedItem gradedItemObj = new GradedItem();
+                gradedItemObj.setCategory(jTextField_category.getText());
+                gradedItemObj.setId(Integer.parseInt(jTextField_itemId.getText()));
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.createGradedItem(Converter.convertFromObjectToJSON(gradedItemObj, GradedItem.class), gradebook);
+
+                resourceURI = clientResponse.getLocation();
+                LOG.debug("Retrieved location {}", resourceURI);
+
+                this.populateForm(clientResponse, false);
+            }       
+        } else if (jRadioButton_read_item.isSelected()) {
+            if (this.checkFormat(true, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_read_item.getText());//Read
+
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.retrieveGradedItem(ClientResponse.class, gradebook, category, itemID);
+                this.populateForm(clientResponse, false);
+            }
+        } else if (jRadioButton_delete_item.isSelected()) {
+            if (this.checkFormat(true, false, false)) { 
+                LOG.debug("Invoking {} action", jRadioButton_delete_item.getText());//Delete
+
+                ClientResponse clientResponse = gradebook_CRUD_rest_client.deleteGradedItem(gradebook, category, itemID);
+                this.populateForm(clientResponse, false);
+            }  
         }
     }//GEN-LAST:event_jButton1ActionPerformed
 
@@ -728,15 +845,15 @@ public class Gradebook_REST_UI extends JFrame {
         LOG.info("Selecting text field {}", jTextField_studentId.getText());
     }//GEN-LAST:event_jTextField_studentIdActionPerformed
 
-    private void jRadioButton_updateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_updateActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_update.getText());
-        this.textFieldOperator(false, true, true, true, true, true, true);
-    }//GEN-LAST:event_jRadioButton_updateActionPerformed
+    private void jRadioButton_update_studentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_update_studentActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_update_student.getText());
+        this.textFieldOperator(true, true, true, true, true, true);
+    }//GEN-LAST:event_jRadioButton_update_studentActionPerformed
 
-    private void jRadioButton_deleteActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_deleteActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_delete.getText());
-        this.textFieldOperator(false, true, true, true, true, false, false);
-    }//GEN-LAST:event_jRadioButton_deleteActionPerformed
+    private void jRadioButton_delete_studentActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_delete_studentActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_delete_student.getText());
+        this.textFieldOperator(true, true, true, true, true, true);
+    }//GEN-LAST:event_jRadioButton_delete_studentActionPerformed
 
     private void jTextField_categoryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField_categoryActionPerformed
         LOG.info("Selecting text field {}", jTextField_category.getText());
@@ -746,36 +863,36 @@ public class Gradebook_REST_UI extends JFrame {
         LOG.info("Selecting text field {}", jTextField_itemId.getText());
     }//GEN-LAST:event_jTextField_itemIdActionPerformed
 
-    private void jTextField3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField3ActionPerformed
+    private void jTextField_codeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField_codeActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTextField3ActionPerformed
+    }//GEN-LAST:event_jTextField_codeActionPerformed
 
-    private void jTextField5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField5ActionPerformed
+    private void jTextField_locationActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField_locationActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTextField5ActionPerformed
+    }//GEN-LAST:event_jTextField_locationActionPerformed
 
-    private void jTextField6ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField6ActionPerformed
+    private void jTextField_mediaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextField_mediaActionPerformed
         // TODO add your handling code here:
-    }//GEN-LAST:event_jTextField6ActionPerformed
+    }//GEN-LAST:event_jTextField_mediaActionPerformed
 
-    private void jRadioButton_create2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_create2ActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_create2.getText());
-        this.textFieldOperator(true, false, false, false, false, false, false);
-    }//GEN-LAST:event_jRadioButton_create2ActionPerformed
+    private void jRadioButton_create_gradebookActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_create_gradebookActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_create_gradebook.getText());
+        this.textFieldOperator(true, false, false, false, false, false);
+    }//GEN-LAST:event_jRadioButton_create_gradebookActionPerformed
 
-    private void jRadioButton_read2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_read2ActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_read2.getText());
-        this.textFieldOperator(true, false, false, false, false, false, false);
-    }//GEN-LAST:event_jRadioButton_read2ActionPerformed
+    private void jRadioButton_read_gradebookActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_read_gradebookActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_read_gradebook.getText());
+        this.textFieldOperator(true, false, false, false, false, false);
+    }//GEN-LAST:event_jRadioButton_read_gradebookActionPerformed
 
-    private void jRadioButton_delete2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_delete2ActionPerformed
-        LOG.info("Selecting radio button {}", jRadioButton_delete2.getText());
-        this.textFieldOperator(true, false, false, false, false, false, false);
-    }//GEN-LAST:event_jRadioButton_delete2ActionPerformed
+    private void jRadioButton_delete_gradebookActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_delete_gradebookActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_delete_gradebook.getText());
+        this.textFieldOperator(true, false, false, false, false, false);
+    }//GEN-LAST:event_jRadioButton_delete_gradebookActionPerformed
 
     private void jToggleButton_reqActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jToggleButton_reqActionPerformed
         if(this.enableDiableFlag){
-            this.textFieldOperator(true, true, true, true, true, true, true);
+            this.textFieldOperator(true, true, true, true, true, true);
             this.enableDiableFlag = false;
         }else {
             this.enableDiableFlag = true;
@@ -791,6 +908,21 @@ public class Gradebook_REST_UI extends JFrame {
             this.formatCheckingFlag = true;
         }
     }//GEN-LAST:event_jToggleButton_formatActionPerformed
+
+    private void jRadioButton_create_itemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_create_itemActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_create_item.getText());
+        this.textFieldOperator(true, true, true, false, false, false);
+    }//GEN-LAST:event_jRadioButton_create_itemActionPerformed
+
+    private void jRadioButton_read_itemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_read_itemActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_read_item.getText());
+        this.textFieldOperator(true, true, true, false, false, false);
+    }//GEN-LAST:event_jRadioButton_read_itemActionPerformed
+
+    private void jRadioButton_delete_itemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jRadioButton_delete_itemActionPerformed
+        LOG.info("Selecting radio button {}", jRadioButton_delete_item.getText());
+        this.textFieldOperator(true, true, true, false, false, false);
+    }//GEN-LAST:event_jRadioButton_delete_itemActionPerformed
 
     /**
      * @param args the command line arguments
@@ -825,7 +957,7 @@ public class Gradebook_REST_UI extends JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(new Runnable() {
             public void run() {
-                new Gradebook_REST_UI().setVisible(true);
+                new Gradebook_REST_UI("RESTful-CRUD Client").setVisible(true);
             }
         });
     }
@@ -836,13 +968,13 @@ public class Gradebook_REST_UI extends JFrame {
     private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel11;
     private javax.swing.JLabel jLabel12;
-    private javax.swing.JLabel jLabel13;
     private javax.swing.JLabel jLabel14;
     private javax.swing.JLabel jLabel15;
     private javax.swing.JLabel jLabel16;
     private javax.swing.JLabel jLabel17;
     private javax.swing.JLabel jLabel18;
     private javax.swing.JLabel jLabel2;
+    private javax.swing.JLabel jLabel20;
     private javax.swing.JLabel jLabel3;
     private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel5;
@@ -851,33 +983,38 @@ public class Gradebook_REST_UI extends JFrame {
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JLabel jLabel_help;
-    private javax.swing.JRadioButton jRadioButton_create;
-    private javax.swing.JRadioButton jRadioButton_create2;
-    private javax.swing.JRadioButton jRadioButton_delete;
-    private javax.swing.JRadioButton jRadioButton_delete2;
-    private javax.swing.JRadioButton jRadioButton_read;
-    private javax.swing.JRadioButton jRadioButton_read2;
-    private javax.swing.JRadioButton jRadioButton_update;
+    private javax.swing.JRadioButton jRadioButton_create_gradebook;
+    private javax.swing.JRadioButton jRadioButton_create_item;
+    private javax.swing.JRadioButton jRadioButton_create_student;
+    private javax.swing.JRadioButton jRadioButton_delete_gradebook;
+    private javax.swing.JRadioButton jRadioButton_delete_item;
+    private javax.swing.JRadioButton jRadioButton_delete_student;
+    private javax.swing.JRadioButton jRadioButton_read_gradebook;
+    private javax.swing.JRadioButton jRadioButton_read_item;
+    private javax.swing.JRadioButton jRadioButton_read_student;
+    private javax.swing.JRadioButton jRadioButton_update_student;
     private javax.swing.JScrollPane jScrollPane1;
-    private javax.swing.JTextField jTextField3;
-    private javax.swing.JTextField jTextField5;
-    private javax.swing.JTextField jTextField6;
+    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JSeparator jSeparator2;
     private javax.swing.JTextField jTextField_category;
-    private javax.swing.JTextField jTextField_date;
+    private javax.swing.JTextField jTextField_code;
     private javax.swing.JTextField jTextField_feedback;
-    private javax.swing.JTextField jTextField_gradebook1;
-    private javax.swing.JTextField jTextField_gradebook2;
+    private javax.swing.JTextField jTextField_gradebook;
     private javax.swing.JTextField jTextField_help;
     private javax.swing.JTextField jTextField_itemId;
+    private javax.swing.JTextField jTextField_location;
+    private javax.swing.JTextField jTextField_media;
+    private javax.swing.JTextField jTextField_phrase;
     private javax.swing.JTextField jTextField_score;
     private javax.swing.JTextField jTextField_studentId;
     private javax.swing.JTextPane jTextPane_response;
     private javax.swing.JToggleButton jToggleButton_format;
     private javax.swing.JToggleButton jToggleButton_req;
     // End of variables declaration//GEN-END:variables
+    private String gradebook;
     private String studentID;
     private String itemID;
-    private String marks;
+    private String score;
     private boolean enableDiableFlag;
     private boolean formatCheckingFlag;
 }

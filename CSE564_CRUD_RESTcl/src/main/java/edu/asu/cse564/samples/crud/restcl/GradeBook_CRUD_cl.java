@@ -57,15 +57,25 @@ public class GradeBook_CRUD_cl {
         return webResource.path(gradebook).delete(ClientResponse.class);
     }
     
-    public ClientResponse createGradedItem(Object requestEntity, String gradebook, String category) throws UniformInterfaceException {
+    public ClientResponse createStudent(Object requestEntity, String gradebook, String category, String itemId) throws UniformInterfaceException {
+        LOG.info("Initiating a Create request");
+        LOG.debug("Gradebook = {}", gradebook);
+        LOG.debug("Category = {}", category);
+        LOG.debug("Item id = {}", itemId);
+        LOG.debug("JSON String = {}", (String) requestEntity);
+        
+        return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).path("students").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, requestEntity);
+    }
+    
+    public ClientResponse createGradedItem(Object requestEntity, String gradebook) throws UniformInterfaceException {
         LOG.info("Initiating a Create request");
         LOG.debug("Gradebook = {}", gradebook);
         LOG.debug("JSON String = {}", (String) requestEntity);
         
-        return webResource.path(gradebook).path("gradeditems").path(category).type(MediaType.APPLICATION_JSON).post(ClientResponse.class, requestEntity);
+        return webResource.path(gradebook).path("gradeditems").type(MediaType.APPLICATION_JSON).post(ClientResponse.class, requestEntity);
     }
     
-    public <T> T retrieveGradedItem(Class<T> responseType, String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
+    public <T> T retrieveStudent(Class<T> responseType, String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
         LOG.info("Initiating a Retrieve request");
         LOG.debug("responseType = {}", responseType.getClass());
         LOG.debug("Gradebook = {}", gradebook);
@@ -75,7 +85,16 @@ public class GradeBook_CRUD_cl {
         return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).path("students").path(studentId).accept(MediaType.APPLICATION_JSON).get(responseType);
     }
     
-    public ClientResponse updateGradedItem(Object requestEntity, String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
+    public <T> T retrieveGradedItem(Class<T> responseType, String gradebook, String category, String itemId) throws UniformInterfaceException {
+        LOG.info("Initiating a Retrieve request");
+        LOG.debug("responseType = {}", responseType.getClass());
+        LOG.debug("Gradebook = {}", gradebook);
+        LOG.debug("Item Id = {}", itemId);
+
+        return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).accept(MediaType.APPLICATION_JSON).get(responseType);
+    }
+    
+    public ClientResponse updateStudent(Object requestEntity, String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
         LOG.info("Initiating an Update request");
         LOG.debug("JSON String = {}", (String) requestEntity);
         LOG.debug("Gradebook = {}", gradebook);
@@ -85,7 +104,7 @@ public class GradeBook_CRUD_cl {
         return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).path("students").path(studentId).type(MediaType.APPLICATION_JSON).put(ClientResponse.class, requestEntity);
     }
     
-    public ClientResponse deleteGradedItem(String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
+    public ClientResponse deleteStudent(String gradebook, String category, String itemId, String studentId) throws UniformInterfaceException {
         LOG.info("Initiating a Delete request");
         LOG.debug("Gradebook = {}", gradebook);
         LOG.debug("Item Id = {}", itemId);
@@ -93,6 +112,15 @@ public class GradeBook_CRUD_cl {
         
         return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).path("students").path(studentId).delete(ClientResponse.class);
     }
+    
+    public ClientResponse deleteGradedItem(String gradebook, String category, String itemId) throws UniformInterfaceException {
+        LOG.info("Initiating a Delete request");
+        LOG.debug("Gradebook = {}", gradebook);
+        LOG.debug("Item Id = {}", itemId);
+        
+        return webResource.path(gradebook).path("gradeditems").path(category).path(itemId).delete(ClientResponse.class);
+    }
+    
     public void close() {
         LOG.info("Closing the REST Client");
         

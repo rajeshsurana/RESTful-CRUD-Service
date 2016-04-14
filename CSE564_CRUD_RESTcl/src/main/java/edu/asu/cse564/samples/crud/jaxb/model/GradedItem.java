@@ -5,6 +5,8 @@
  */
 package edu.asu.cse564.samples.crud.jaxb.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,34 +20,13 @@ public class GradedItem {
     
     private String category;
     private int id;
-    private int studentId;
-    private float marks;
-    private String feedback;
+    private List<Student> students;
     
     public GradedItem(){
         LOG.info("Creating graded-item object");
+        students = new ArrayList<Student>();
     }
 
-    public GradedItem(int id, String category, int studentId, float marks, String feedback) {
-        LOG.info("Creating graded-item object");
-        this.id = id;
-        this.category = category;
-        this.studentId = studentId;
-        this.marks = marks;
-        this.feedback = feedback;
-        LOG.debug("Created graded-item = {}", this);
-    }
-
-    public GradedItem(GradedItem item){
-        LOG.info("Creating graded-item object");
-        this.id = item.id;
-        this.category = item.category;
-        this.studentId = item.studentId;
-        this.marks = item.marks;
-        this.feedback = item.feedback;
-        LOG.debug("Created graded-item = {}", this);   
-    }
-    
     public int getId() {
         return id;
     }
@@ -66,39 +47,22 @@ public class GradedItem {
         LOG.debug("Updated graded-item = {}", this);
     }
 
-    public int getStudentId() {
-        return studentId;
+    public List<Student> getStudents() {
+        return students;
     }
 
-    public void setStudentId(int studentId) {
-        LOG.info("Setting graded-item student id");
-        this.studentId = studentId;
+    public void setStudents(List<Student> students) {
+        LOG.info("Setting graded-item students");
+        this.students = students;
         LOG.debug("Updated graded-item = {}", this);
     }
-
-    public float getMarks() {
-        return marks;
-    }
-
-    public void setMarks(float marks) {
-        LOG.info("Setting graded-item marks");
-        this.marks = marks;
-        LOG.debug("Updated graded-item = {}", this);
-    }
-
-    public String getFeedback() {
-        return feedback;
-    }
-
-    public void setFeedback(String feedback) {
-        LOG.info("Setting graded-item feedback");
-        this.feedback = feedback;
-        LOG.debug("Updated graded-item = {}", this);
+    
+    public void addStudent(Student student){
+        this.students.add(student);
     }
 
     @Override
     public String toString() {
-        return "GradedItem{" + "category=" + category + ", id=" + id + ", studentId=" + studentId + ", marks=" + marks + ", feedback=" + feedback + '}';
+        return "GradedItem{" + "category=" + category + ", id=" + id + ", students=" + students + '}';
     }
-
 }
